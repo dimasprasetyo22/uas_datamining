@@ -62,6 +62,17 @@ elif menu == "🩺 1. Klasifikasi Diabetes":
     try:
         df_diabetes = load_diabetes_data()
         
+        # --- MENAMPILKAN HEATMAP KORELASI ANTAR FITUR ---
+        st.subheader("📊 Korelasi Antar Fitur - Dataset Diabetes")
+        st.markdown("Visualisasi matriks korelasi untuk melihat hubungan linier antar variabel/fitur pada dataset diabetes.")
+        
+        fig_corr, ax_corr = plt.subplots(figsize=(8, 6))
+        corr_matrix = df_diabetes.corr()
+        sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm', ax=ax_corr, cbar=True)
+        ax_corr.set_title("Korelasi Antar Fitur - Dataset Diabetes")
+        st.pyplot(fig_corr, clear_figure=True)
+        st.markdown("---")
+        
         X = df_diabetes.drop('Outcome', axis=1)
         y = df_diabetes['Outcome']
         
@@ -101,7 +112,7 @@ elif menu == "🩺 1. Klasifikasi Diabetes":
         st.dataframe(metrics_df.style.highlight_max(axis=0, color='lightgreen'))
         
         st.subheader("📉 Visualisasi Confusion Matrix")
-        model_choice_cm = st.selectbox("Pilih Model untuk melihat Confusion Matrix:", ["KNN", "Naïve Bayes", "Decision Tree"])
+        model_choice_cm = st.selectbox("Pilih Model untuk melihat Confusion Matrix:", ["KNN", "Naïve Bayes", "Decision Tree"], key="cm_model_select")
         
         if model_choice_cm == "KNN":
             cm = confusion_matrix(y_test, y_pred_knn)
@@ -118,7 +129,7 @@ elif menu == "🩺 1. Klasifikasi Diabetes":
         ax.set_title(title)
         ax.set_xlabel("Prediksi")
         ax.set_ylabel("Aktual")
-        st.pyplot(fig)
+        st.pyplot(fig, clear_figure=True)
         
         st.markdown("---")
         st.subheader("🔍 Prediksi Status Pasien Baru")
@@ -136,7 +147,7 @@ elif menu == "🩺 1. Klasifikasi Diabetes":
             p_dpf = st.number_input("Fungsi Silsilah Diabetes (DPF)", min_value=0.0, max_value=3.0, value=0.5)
             p_age = st.number_input("Usia (Age)", min_value=1, max_value=120, value=30)
             
-        selected_model_deploy = st.selectbox("Pilih Model untuk Prediksi:", ["KNN", "Naïve Bayes", "Decision Tree"])
+        selected_model_deploy = st.selectbox("Pilih Model untuk Prediksi:", ["KNN", "Naïve Bayes", "Decision Tree"], key="deploy_model_select")
         
         if st.button("Prediksi Sekarang"):
             input_data = np.array([[p_pregnancies, p_glucose, p_bp, p_skin, p_insulin, p_bmi, p_dpf, p_age]])
@@ -170,7 +181,8 @@ elif menu == "☕ 2. Clustering Gerai Kopi & Zona Sepi":
     try:
         df_coffee = pd.read_csv("dataset/lokasi_gerai_kopi_clean.csv")
         
-        k_clusters = st.slider("Pilih Jumlah Klaster (K):", min_value=2, max_value=5, value=3)
+        # Tambahkan key unik pada slider untuk mencegah error DOM Node Streamlit
+        k_clusters = st.slider("Pilih Jumlah Klaster (K):", min_value=2, max_value=5, value=3, key="cluster_slider_k")
         
         feature_cols = ['x', 'y', 'population_density']
         X_cluster = df_coffee[feature_cols]
@@ -210,7 +222,7 @@ elif menu == "☕ 2. Clustering Gerai Kopi & Zona Sepi":
         ax.set_title("Peta Persebaran Klaster Gerai Kopi & Deteksi Zona Sepi")
         ax.set_xlabel("Koordinat X")
         ax.set_ylabel("Koordinat Y")
-        st.pyplot(fig)
+        st.pyplot(fig, clear_figure=True)
         
         with st.expander("📂 Lihat Data Mentah & Hasil Klasterisasi (Tabel)"):
             st.dataframe(df_coffee)
@@ -220,13 +232,13 @@ elif menu == "☕ 2. Clustering Gerai Kopi & Zona Sepi":
         
         col_input1, col_input2, col_input3 = st.columns(3)
         with col_input1:
-            new_x = st.number_input("Koordinat X Baru", value=float(df_coffee['x'].mean()))
+            new_x = st.number_input("Koordinat X Baru", value=float(df_coffee['x'].mean()), key="input_new_x")
         with col_input2:
-            new_y = st.number_input("Koordinat Y Baru", value=float(df_coffee['y'].mean()))
+            new_y = st.number_input("Koordinat Y Baru", value=float(df_coffee['y'].mean()), key="input_new_y")
         with col_input3:
-            new_density = st.number_input("Estimasi Kepadatan Penduduk", value=float(df_coffee['population_density'].mean()))
+            new_density = st.number_input("Estimasi Kepadatan Penduduk", value=float(df_coffee['population_density'].mean()), key="input_new_density")
             
-        if st.button("Analisis Zona Lokasi Baru"):
+        if st.button("Analisis Zona Lokasi Baru", key="btn_analisis_zona"):
             new_data = scaler_cluster.transform([[new_x, new_y, new_density]])
             predicted_cluster = kmeans.predict(new_data)[0]
             
