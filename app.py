@@ -37,7 +37,7 @@ if menu == "🏠 Beranda":
     
     Aplikasi ini terbagi menjadi dua modul utama:
     1. **Klasifikasi Risiko Diabetes**: Memprediksi status diabetes pasien menggunakan tiga algoritma (*KNN, Naïve Bayes, dan Decision Tree*) beserta evaluasi metrik dan *Confusion Matrix*.
-    2. **Clustering Lokasi Gerai Kopi**: Mengelompokkan titik lokasi gerai kopi menggunakan algoritma *K-Means* untuk mendeteksi persebaran serta zona dengan potensi pelanggan rendah (zona sepi).
+    2. **Clustering Lokasi Gerai Kopi**: Mengelompokkan titik lokasi gerai kopi menggunakan algoritma *K-Means* (metode *Elbow*) untuk mendeteksi persebaran serta zona dengan potensi pelanggan rendah (zona sepi).
     
     *Silakan pilih menu di sidebar sebelah kiri untuk mulai menjelajahi aplikasi.*
     """)
@@ -62,10 +62,21 @@ elif menu == "🩺 1. Klasifikasi Diabetes":
     try:
         df_diabetes = load_diabetes_data()
         
-        # --- MENAMPILKAN HEATMAP KORELASI ANTAR FITUR ---
+        # --- 1. VISUALISASI DISTRIBUSI KELAS OUTCOME ---
+        st.subheader("📊 Distribusi Kelas Target (Outcome)")
+        st.markdown("Visualisasi jumlah pasien yang tidak mengidap diabetes (0) versus yang mengidap diabetes (1).")
+        fig_dist, ax_dist = plt.subplots(figsize=(7, 4))
+        sns.countplot(x='Outcome', data=df_diabetes, palette=['#4c72b0', '#dd8452'], ax=ax_dist)
+        ax_dist.set_title("Distribusi Kelas Outcome")
+        ax_dist.set_xlabel("Outcome")
+        ax_dist.set_ylabel("Jumlah Pasien")
+        ax_dist.set_xticklabels(["Tidak Diabetes (0)", "Diabetes (1)"])
+        st.pyplot(fig_dist, clear_figure=True)
+        st.markdown("---")
+
+        # --- 2. HEATMAP KORELASI ANTAR FITUR ---
         st.subheader("📊 Korelasi Antar Fitur - Dataset Diabetes")
-        st.markdown("Visualisasi matriks korelasi untuk melihat hubungan linier antar variabel/fitur pada dataset diabetes.")
-        
+        st.markdown("Matriks korelasi untuk melihat hubungan linier antar variabel/fitur pada dataset diabetes.")
         fig_corr, ax_corr = plt.subplots(figsize=(8, 6))
         corr_matrix = df_diabetes.corr()
         sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm', ax=ax_corr, cbar=True)
@@ -110,6 +121,17 @@ elif menu == "🩺 1. Klasifikasi Diabetes":
         
         st.subheader("📊 Perbandingan Metrik Evaluasi Model")
         st.dataframe(metrics_df.style.highlight_max(axis=0, color='lightgreen'))
+
+        # --- 3. GRAFIK BATANG PERBANDINGAN METRIK ---
+        fig_bar, ax_bar = plt.subplots(figsize=(8, 5))
+        metrics_df.plot(kind='bar', ax=ax_bar, colormap='viridis')
+        ax_bar.set_title("Perbandingan Metrik Evaluasi Model Klasifikasi Diabetes")
+        ax_bar.set_ylabel("Nilai")
+        ax_bar.set_ylim(0, 1.0)
+        ax_bar.set_xticklabels(metrics_df.index, rotation=0)
+        ax_bar.legend(loc='lower right')
+        st.pyplot(fig_bar, clear_figure=True)
+        st.markdown("---")
         
         st.subheader("📉 Visualisasi Confusion Matrix")
         model_choice_cm = st.selectbox("Pilih Model untuk melihat Confusion Matrix:", ["KNN", "Naïve Bayes", "Decision Tree"], key="cm_model_select")
@@ -181,13 +203,31 @@ elif menu == "☕ 2. Clustering Gerai Kopi & Zona Sepi":
     try:
         df_coffee = pd.read_csv("dataset/lokasi_gerai_kopi_clean.csv")
         
-        # Tambahkan key unik pada slider untuk mencegah error DOM Node Streamlit
-        k_clusters = st.slider("Pilih Jumlah Klaster (K):", min_value=2, max_value=5, value=3, key="cluster_slider_k")
-        
         feature_cols = ['x', 'y', 'population_density']
         X_cluster = df_coffee[feature_cols]
         scaler_cluster = StandardScaler()
         X_cluster_scaled = scaler_cluster.fit_transform(X_cluster)
+
+        # --- 1. METODE ELBOW ---
+        st.subheader("📉 Grafik Metode Elbow untuk Penentuan Jumlah Klaster")
+        st.markdown("Grafik inertia untuk mengevaluasi jumlah klaster optimal (K) dari 2 hingga 8.")
+        
+        inertia = []
+        K_range = range(2, 9)
+        for k in K_range:
+            km_test = KMeans(n_clusters=k, random_state=42, n_init=10)
+            km_test.fit(X_cluster_scaled)
+            inertia.append(km_test.inertia_)
+            
+        fig_elbow, ax_elbow = plt.subplots(figsize=(8, 5))
+        ax_elbow.plot(list(K_range), inertia, marker='o')
+        ax_elbow.set_title("Metode Elbow untuk Menentukan Jumlah Klaster Optimal")
+        ax_elbow.set_xlabel("Jumlah Klaster (K)")
+        ax_elbow.set_ylabel("Inertia")
+        st.pyplot(fig_elbow, clear_figure=True)
+        st.markdown("---")
+        
+        k_clusters = st.slider("Pilih Jumlah Klaster (K) untuk Diterapkan:", min_value=2, max_value=5, value=3, key="cluster_slider_k")
         
         kmeans = KMeans(n_clusters=k_clusters, random_state=42, n_init=10)
         df_coffee['Cluster'] = kmeans.fit_predict(X_cluster_scaled)
@@ -219,7 +259,7 @@ elif menu == "☕ 2. Clustering Gerai Kopi & Zona Sepi":
             s=80, 
             ax=ax
         )
-        ax.set_title("Peta Persebaran Klaster Gerai Kopi & Deteksi Zona Sepi")
+        ax.set_title(f"Peta Persebaran Klaster Gerai Kopi (K={k_clusters}) & Deteksi Zona Sepi")
         ax.set_xlabel("Koordinat X")
         ax.set_ylabel("Koordinat Y")
         st.pyplot(fig, clear_figure=True)
